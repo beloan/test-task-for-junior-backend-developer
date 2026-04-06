@@ -20,16 +20,19 @@ type Usecase interface {
 	Update(ctx context.Context, id int64, input UpdateInput) (*taskdomain.Task, error)
 	Delete(ctx context.Context, id int64) error
 	List(ctx context.Context) ([]taskdomain.Task, error)
+	GetSchedule(ctx context.Context, taskID int64, limit int) ([]string, error)
 }
 
 type CreateInput struct {
 	Title       string
 	Description string
 	Status      taskdomain.Status
+	Recurrence  *taskdomain.RecurrenceConfig
 }
 
 type UpdateInput struct {
 	Title       string
 	Description string
 	Status      taskdomain.Status
+	Recurrence  *taskdomain.RecurrenceConfig
 }

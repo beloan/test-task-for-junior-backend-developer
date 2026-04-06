@@ -31,6 +31,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		Recurrence:  req.Recurrence,
 	})
 	if err != nil {
 		writeUsecaseError(w, err)
@@ -73,6 +74,7 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		Recurrence:  req.Recurrence,
 	})
 	if err != nil {
 		writeUsecaseError(w, err)
@@ -107,6 +109,48 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 	response := make([]taskDTO, 0, len(tasks))
 	for i := range tasks {
 		response = append(response, newTaskDTO(&tasks[i]))
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// GetSchedule возвращает расписание (следующие даты выполнения) для периодической задачи
+func (h *TaskHandler) GetSchedule(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Получаем query параметр для количества выполнений (по умолчанию 10)
+	limit := 10
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	task, err := h.usecase.GetByID(r.Context(), id)
+	if err != nil {
+		writeUsecaseError(w, err)
+		return
+	}
+
+	schedule, err := h.usecase.GetSchedule(r.Context(), id, limit)
+	if err != nil {
+		writeUsecaseError(w, err)
+		return
+	}
+
+	recurrenceType := "none"
+	if task.Recurrence != nil {
+		recurrenceType = string(task.Recurrence.RecurrenceType)
+	}
+
+	response := map[string]interface{}{
+		"task_id":        task.ID,
+		"recurrence_type": recurrenceType,
+		"schedule":       schedule,
 	}
 
 	writeJSON(w, http.StatusOK, response)
